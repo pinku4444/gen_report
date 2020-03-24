@@ -40,7 +40,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                         <div class="col-sm-9"></div>
                         <div class="col-sm-3">
                             <div class="export-button">
-                                <button type="button" class="btn btn-primary">Run</button>
+                                <button type="button" id='run' class="btn btn-primary">Run</button>
                                 <button type="button" class="btn btn-success">Save</button>
                             </div>
                         </div>
@@ -68,13 +68,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     <div class="tab-content">
                         <div id="outline" class="tab-pane fade in active ">
                             <label for="column-name">
-                               column : 
+                                column : 
                             </label>
-                            <select class="js-example-basic-multiple" id="column-name" name="states[]" multiple="multiple" style="width: 100%">
+                            <select class="js-example-basic-multiple" id="column-name" name="states['job_id']" multiple="multiple" style="width: 100%">
                                 <?php foreach ($column_name as $key => $value): ?>
-                                    <option value="<?php echo $value ?>"><?php echo $value ?></option>
-                                <?php endforeach;?>
-                                
+                                    <option <?php echo in_array($value['column_name'], $selected_column) ? "selected" : "" ?> value="<?php echo $value['table_name'] . "." . $value['column_name'] ?>"><?php echo $value['column_name'] ?></option>
+                                <?php endforeach; ?>
+
                             </select>
                         </div>
                         <div id="filters" class="tab-pane fade">
@@ -85,20 +85,114 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                 </div>
 
             </div>
-        </div>
-        <div class="col-md-9">
-            <h1>Hello</h1>
+            <div class="col-md-9">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="doc-table">
+                        <thead>
+                            <tr>
+                                <th scope="col"></th>
+                                <?php foreach ($selected_column as $key => $value) : ?>
+                                    <th scope="col">
+                                        <?php 
+                                          $col_name = explode("_", $value);
+                                          $col_name = ucwords(join(" ",$col_name));
+                                          echo $col_name; 
+                                        ?>
+                                    </th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($data as $key => $value) : ?>
+                                <tr>
+
+                                    <th scope="col"><?php echo $key+1 ?></th>
+                                    <?php foreach ($selected_column as $index => $column_name) : ?>
+                                        <th scope="col"><?php echo $value->$column_name ?></th>
+                                    <?php endforeach; ?>
+
+
+
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
-    </div>
-
-</body>
+    </body>
 </html>
 <script>
-    $(document).ready(function() {
-    $('.js-example-basic-multiple').select2({
-        width: 'resolve'
+    $(document).ready(function () {
+        var SELECTED_COLUMN = [];
+        $('.js-example-basic-multiple').select2({
+            width: 'resolve'
+
+        });
         
+        $("#run").click(function() {
+            var selected_column = $("#column-name").val();
+            $.ajax({
+                url:'/getData',
+                method: 'post',
+                data: {'selected_column': selected_column},
+                success: function(response){
+                    var data = JSON.parse(response);
+                    SELECTED_COLUMN = data.selected_column
+                    createHtmlOfDocTable(data.data);
+                },
+                error: function(error) {
+                    alert(response)
+                }
+
+            });
+        
+        });
+        
+        function createHtmlOfDocTable(data) {
+            var html =''
+            html = html+ "<thead><tr><th scope='col'></th>"
+                
+                    SELECTED_COLUMN.forEach(function(column_name){
+                        var final_column_name = column_name.split("_");
+                        console.log("data",final_column_name)
+                        final_column_name = titleCase(final_column_name.join(' '));
+                        console.log("concate data",final_column_name)
+                        html = html+ '<th scope="col">'+
+                                            final_column_name
+                                       '</th>';
+                            });
+                                
+                                    
+             html = html+'</tr>'+
+                    '</thead>'+
+                    '<tbody>';
+                        data.forEach(function(column_data,index){
+                            var temp_index_name = index+1;
+                            html = html+'<tr>'+
+                                   '<th scope="col">'+ temp_index_name +'</th>';
+                            SELECTED_COLUMN.forEach(function(column_name){
+                                var temp_column_name = column_data[column_name] == null ? "NA" : column_data[column_name];
+                                html = html + '<th scope="col">'+ temp_column_name  +'</th>'
+                            });
+                            html = html + '</tr>';
+                        })
+                    html = html + '</tbody>';    
+                        
+                        
+                    
+            //console.log(html)
+            $("#doc-table").html(html);
+        }
+        
+        function titleCase(str) {
+            return str.toLowerCase().split(' ').map(function(word) {
+            return word.replace(word[0], word[0].toUpperCase());
+             }).join(' ');
+        }
     });
-});
+    
+    
 </script>
